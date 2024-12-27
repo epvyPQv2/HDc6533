@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDc文件传输</title>
+    <style>
+        body {
+            background-color: #eef2ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            text-align: center;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.9); 
+        }
+        button, input[type="file"], input[type="text"] {
+            margin: 10px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button {
+            background-color: #66ccff;
+            color: white;
+        }
+        button:hover {
+            background-color: #4ea7d7;
+        }
+        input[type="file"], input[type="text"] {
+            background-color: rgba(255, 255, 255, 0.8); 
+            border: 1px solid #ccc;
+        }
+        p {
+            font-size: 16px;
+            color: #333;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>HDc文件传输</h2>
+        <button onclick="uploadFile()">上传文件</button>
+        <input type="file" id="fileInput" style="display:none;" accept=".txt,.pdf,.jpg,.jpeg,.png,.docx,.xlsx">
+        <p id="uploadMessage"></p>
+        
+        <br>
+        
+        <button onclick="showDownloadInput()">下载文件</button>
+        <input type="text" id="downloadCode" placeholder="请输入8位提取码" style="display:none;">
+        <button onclick="downloadFile()" style="display:none;">确认</button>
+        <p id="downloadMessage"></p>
+    </div>
+
+    <script>
+        function generateRandomCode() {
+            let code = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            for (let i = 0; i < 8; i++) {
+                code += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return code;
+        }
+
+        function uploadFile() {
+            document.getElementById('fileInput').click();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 10485760) { // Limit to 10MB
+                document.getElementById('uploadMessage').innerText = '文件大小不能超过10MB。';
+                document.getElementById('uploadMessage').classList.add('error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result.split(',')[1];
+                const code = generateRandomCode();
+                localStorage.setItem(code, JSON.stringify({ data: base64Data, filename: file.name }));
+                setTimeout(() => {
+                    localStorage.removeItem(code);
+                }, 600000); // 10 minutes
+
+                document.getElementById('uploadMessage').innerText = `文件已上传，您的提取码是：${code}`;
+                document.getElementById('uploadMessage').classList.remove('error');
+                document.getElementById('uploadMessage').classList.add('success');
+                document.getElementById('fileInput').value = ''; // Reset file input
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function showDownloadInput() {
+            document.getElementById('downloadCode').style.display = 'inline-block';
+            document.getElementById('downloadMessage').innerText = '';
+            document.getElementById('downloadCode').focus();
+            document.querySelector('button[onclick="downloadFile()"]').style.display = 'inline-block';
+        }
+
+        function downloadFile() {
+            const code = document.getElementById('downloadCode').value.trim();
+            if (!/^[A-Za-z0-9]{8}$/.test(code)) {
+                document.getElementById('downloadMessage').innerText = '提取码必须是8位字母数字组合。';
+                document.getElementById('downloadMessage').classList.add('error');
+                return;
+            }
+
+            const fileInfo = JSON.parse(localStorage.getItem(code));
+
+            if (fileInfo) {
+                const link = document.createElement('a');
+                link.href = `data:${fileInfo.data.substring(0, 50)};base64,${fileInfo.data}`;
+                link.download = fileInfo.filename;
+                link.click();
+
+                document.getElementById('downloadMessage').innerText = '文件下载成功！';
+                document.getElementById('downloadMessage').classList.remove('error');
+                document.getElementById('downloadMessage').classList.add('success');
+            } else {
+                document.getElementById('downloadMessage').innerText = '无效的提取码，请重试。';
+                document.getElementById('downloadMessage').classList.add('error');
+            }
+
+            document.getElementById('downloadCode').value = '';
+            document.getElementById('downloadCode').style.display = 'none';
+            document.querySelector('button[onclick="downloadFile()"]').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
